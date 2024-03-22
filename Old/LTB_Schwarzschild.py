@@ -13,14 +13,32 @@ OLambda = 0.7
 #Scale factor definition
 
 def a(t):
-    a = np.e**(H0 * t)
+    a = 1
+    #a = np.e**(H0 * t)
     #a = H0 * t**0.5
     return(a)
 
 def dadt(t):
-    dadt = H0 * np.e**(H0 * t)
+    dadt = 0
+    #dadt = H0 * np.e**(H0 * t)
     #dadt = H0 * 0.5 * t**(-0.5)
     return(dadt)
+
+#Define a mass distribution
+
+M0 = 1e1   #Mass at r=0
+sigma = 0.1
+width = 2 * sigma**2
+M_centre = 0
+rstep = 0.0001
+
+def M(r):
+    m = M0
+    return(m)
+
+def dMdr(r):
+    dmdr = 0
+    return(dmdr)
 
 #Define 8 first order differential equations to solve simultaneously
 
@@ -53,7 +71,10 @@ def T_dot(t,r,R,theta,TH,PH):
         lnproduct = lnscales + lnR2
         #print(1, lnproduct, t, R)
         product = np.e**lnproduct
-        Mterm = 0
+        if r == 0:
+            Mterm = 0
+        else:
+            Mterm = 2 * M(r) / r 
         angles = -1 * a(t) * dadt(t) * r**2 * (TH**2 + np.sin(theta)**2 * PH**2)
         T_dot = -1 / (kterm - Mterm) * product
         T_dot = T_dot + angles
@@ -78,11 +99,11 @@ def R_dot(t,r,T,R,theta,TH,PH):
         if r == 0:
             part2 = 0
         else:
-            part2up = k * r**3 
-            part2down = r**2 - k * r**4
+            part2up = -1 * M(r)
+            part2down = r**2 - 2 * M(r) * r
             part2 = part2up / part2down
             part2 = part2 * R**2
-        part3 = r * (1 - k * r**2) * (TH**2 + np.sin(theta)**2 * PH**2)
+        part3 = r * (1 - 2 * M(r) / r) * (TH**2 + np.sin(theta)**2 * PH**2)
         R_dot = part1 + part2 + part3
         #print(part1, part2)
     return(R_dot)
@@ -114,7 +135,7 @@ def overall(sigma,y):
 
 #Define some arbitrary initial conditions
 
-y0 = [0, 0.5, -1, 1, np.pi/2, 0, 0, 0]
+y0 = [0, 1, -1, 1, np.pi/2, 0.4, 0, 0.2]
 
 #Now do the integration
 
@@ -130,31 +151,10 @@ plt.xlabel("t")
 plt.ylabel("r")
 plt.show()
 
-plt.plot(sol.t, sol.y[0])
-plt.xlabel("$\sigma$")
-plt.ylabel("t")
-plt.show()
-
-plt.plot(sol.t, sol.y[1])
-plt.xlabel("$\sigma$")
-plt.ylabel("r")
-#plt.xscale("log")
-#plt.yscale("log")
-plt.show()
-
-plt.plot(sol.y[0], sol.y[4])
-plt.xlabel("t")
-plt.ylabel("$\Theta$")
-plt.show()
-
-plt.plot(sol.y[0], sol.y[5])
-plt.xlabel("t")
-plt.ylabel("$\phi$")
-plt.show()
-
-#Plot y and z
+#Plot x, y and z
 
 alist = a(sol.y[0])
+print(alist)
 
 x = alist * sol.y[1] * np.sin(sol.y[4]) * np.cos(sol.y[5])
 y = alist * sol.y[1] * np.sin(sol.y[4]) * np.sin(sol.y[5])
@@ -164,37 +164,15 @@ xc = sol.y[1] * np.sin(sol.y[4]) * np.cos(sol.y[5]) #comoving xyz
 yc = sol.y[1] * np.sin(sol.y[4]) * np.sin(sol.y[5])
 zc = sol.y[1] * np.cos(sol.y[4])
 
-x0 = alist[0] * sol.y[1][0] * np.sin(sol.y[4][0]) * np.cos(sol.y[5][0])
-y0 = alist[0] * sol.y[1][0] * np.sin(sol.y[4][0]) * np.sin(sol.y[5][0])
-z0 = alist[0] * sol.y[1][0] * np.cos(sol.y[4][0])
+x0 = alist * sol.y[1][0] * np.sin(sol.y[4][0]) * np.cos(sol.y[5][0])
+y0 = alist * sol.y[1][0] * np.sin(sol.y[4][0]) * np.sin(sol.y[5][0])
+z0 = alist * sol.y[1][0] * np.cos(sol.y[4][0])
 
 plt.plot(x,y)
 plt.plot(xc,yc)
+plt.scatter(0, 0)
 plt.scatter(x0, y0)
 plt.xlabel("x")
 plt.ylabel("y")
-plt.legend(["Physical", "Comoving", "$r_0$"])
-plt.show()
-
-plt.plot(x,z)
-plt.plot(xc,zc)
-plt.scatter(x0, z0)
-plt.xlabel("x")
-plt.ylabel("z")
-plt.legend(["Physical", "Comoving", "$r_0$"])
-plt.show()
-
-plt.plot(y,z)
-plt.plot(yc,zc)
-plt.scatter(y0, z0)
-plt.xlabel("y")
-plt.ylabel("z")
-plt.legend(["Physical", "Comoving", "$r_0$"])
-plt.show()
-
-plt.plot(xc,zc)
-plt.xlabel("x")
-plt.ylabel("z")
-plt.title("No Mass")
-plt.savefig("xz_noM.png", dpi=400)
+plt.legend(["Physical", "Comoving", "M", "$r_0$"])
 plt.show()

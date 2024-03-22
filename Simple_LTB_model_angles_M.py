@@ -94,6 +94,8 @@ def R_dot(t,r,T,R,theta,TH,PH):
             sign = 1
         else:
             sign = -1
+        T = abs(T)
+        R = abs(R)
         lnproduct = np.log(T) + np.log(R)
         #print(2, lnproduct, T, R)
         product = np.e**lnproduct
@@ -137,11 +139,11 @@ def overall(sigma,y):
 
 #Define some arbitrary initial conditions
 
-y0 = [0, 1, -1, 1, np.pi/2, np.pi/2, 0, 0.01]
+y0 = [0, -1, -1, 1, np.pi/2, np.pi/2, 0, 0.01]
 
 #Now do the integration
 
-sigma = np.arange(100) * 0.01
+sigma = np.arange(100) * 0.01 * 1
 sol = solve_ivp(overall, [0,np.max(sigma)], y0, method="LSODA", min_step=0, t_eval=sigma)
 
 print(np.shape(sol.y))
