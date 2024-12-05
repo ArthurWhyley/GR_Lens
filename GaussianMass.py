@@ -39,3 +39,13 @@ plt.show()
 theory = M0 * sigma * (np.pi / 2)**0.5
 print("Total mass calculated by function =", np.max(Ms))
 print("Theoretical total =", theory)
+
+#Poster
+plt.plot(rs, Ms)
+plt.plot(rs, dMs)
+plt.xlabel("r")
+plt.ylabel("Mass")
+plt.legend(["Cumulative", "At r"])
+plt.xlim([0,1])
+plt.savefig("GaussianProfile.png", dpi=500)
+plt.show()

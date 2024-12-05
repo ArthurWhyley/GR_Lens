@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import solve_ivp
+from cardano_method import CubicEquation as Cubic
 
 #Constants
 
@@ -8,7 +9,7 @@ H0 = 1
 c = 1 #km/s
 OM = 0.3
 OLambda = 0.7
-M = 1e-3
+M = 1e-4
 
 #Scale factor definition
 
@@ -60,6 +61,7 @@ def phi_dot(PH):
     return(PH)
 
 def T_dot(t,r,R,PH):
+    r = abs(r)
     bigbracket = (dadr(r,t) * d2adrdt(r,t) * (1 + r**2)**2 + 2 * dadr(r,t) * dadt(r,t) * r * (1 + r**2)
                   + 2 * a(r,t) * d2adrdt(r,t) * r * (1 + r**2) + 4 * a(r,t) * dadt(r,t) * r**2)
     term1 = -4 * M**2 / (1 - (1 + r**2)**-1) * bigbracket * R**2
@@ -68,6 +70,7 @@ def T_dot(t,r,R,PH):
     return(T_dot)
 
 def R_dot(t,r,T,R,PH):
+    r = abs(r)
     term1 = (-2 * (d2adrdt(r,t) * (1 + r**2) + 2 * dadt(r,t) * r)
              / (dadr(r,t) * (1 + r**2) + 2 * a(r,t) * r) * T * R)
     term2frac = ((d2adr2(r,t) * (1 + r**2) + 4 * dadr(r,t) * r + 2 * a(r,t))
@@ -78,6 +81,7 @@ def R_dot(t,r,T,R,PH):
     return(R_dot)
 
 def PH_dot(t,r,T,R,PH):
+    r = abs(r)
     term1 = -2 * dadt(r,t) / a(r,t) * T * PH
     term2 = -2 * (dadr(r,t) * (1 + r**2) + 2 * a(r,t) * r) / (a(r,t) * (1 + r**2)) * R * PH
     PH_dot = term1 + term2
@@ -93,27 +97,24 @@ def overall(sigma,y):
     return(y_dot)
 
 #Define some arbitrary initial conditions
-Ri = 100
-ri = -1000
-phii = -0.01
-PHi = 10 / (ri + Ri) - phii
+impact = 100
+Ri = -1
+ri = 1000
+phii = -0.1
+#PHi = impact / (ri + Ri) - phii
+PHi = (impact**2 * Ri**2 / (ri**4 - impact**2 * (1 - 2 * M / ri) * ri**2))**0.5 * -1
 Ti = (16 * M**2 *ri**2 / (1 - 1 / (1 + ri**2)) * Ri**2 + 4 * M**2 * (1 + ri**2)**2 * PHi**2)**0.5
 Ti = Ti * 1 #Multiply by 1 or -1 depending on what direction in time is needed
 y0 = [0, ri, phii, Ti, Ri, PHi] 
 
 #Now do the integration
 
-sigma = np.arange(1000000) * 0.00001 
-sol = solve_ivp(overall, [0,np.max(sigma)], y0, method="LSODA", min_step=0, t_eval=sigma)
+sigma = np.arange(1000000) * 0.001 
+sol = solve_ivp(overall, [0,np.max(sigma)], y0, method="LSODA", min_step=0, t_eval=None)
 
 print(np.shape(sol.y))
 print(np.shape(sol.t))
 print(sol.status)
-
-plt.plot(sol.y[0], sol.y[1])
-plt.xlabel("t")
-plt.ylabel("r")
-plt.show()
 
 #Plot xy
 
@@ -128,15 +129,6 @@ plt.scatter(0,0, marker="x")
 plt.scatter(xin,yin)
 plt.xlabel("x")
 plt.ylabel("y")
-plt.show()
-
-plt.plot(x,y)
-plt.scatter(0,0, marker="x")
-plt.scatter(xin,yin)
-plt.xlabel("x")
-plt.ylabel("y")
-plt.xlim([-0.01,0.01])
-plt.ylim([-0.01,0.01])
 plt.show()
 
 #Plot physical x and y
@@ -170,36 +162,16 @@ plt.show()
 plt.plot(sol.y[0], alist)
 plt.xlabel("t")
 plt.ylabel("a")
+plt.savefig("Novikov_a.png", dpi=500)
+plt.show()
+
+plt.plot(sol.y[1], alist)
+plt.xlabel("r")
+plt.ylabel("a")
+#plt.savefig("Novikov_a.png", dpi=500)
 plt.show()
 
 print(amin, amin_t)
-
-#Plot x and y vs t
-
-plt.plot(sol.y[0], x)
-plt.plot(sol.y[0], y)
-plt.xlabel("t")
-plt.ylabel("Value")
-plt.legend(["x","y"])
-plt.show()
-
-#Only plot x and y where t is negative
-
-ilist = []
-for i in range(len(sol.y[0])):
-    if sol.y[0][i] > 0:
-        ilist.append(i)
-xminus = np.delete(x, ilist)
-yminus = np.delete(y, ilist)
-
-plt.plot(x,y)
-plt.plot(xminus, yminus)
-plt.scatter(0,0, marker="x")
-plt.scatter(amin_x,amin_y)
-plt.xlabel("x")
-plt.ylabel("y")
-plt.legend(["Full Path", "t < 0", "M", "Min a"])
-plt.show()
 
 #Plot comparison of "comoving" and "physical" coords
 
@@ -209,16 +181,104 @@ plt.scatter(0,0, marker="x")
 plt.xlabel("x")
 plt.ylabel("y")
 plt.legend(["Novikov", "Scaled", "M"])
-#plt.xlim([-200,200])
-#plt.ylim([-100,100])
+plt.savefig("Novikov.png", dpi=500)
 plt.show()
 
-print(sol.y[0][0],sol.y[1][0],sol.y[2][0],x[0],y[0])
-print(sol.y[1][0] * np.cos(sol.y[2][0]))
-print(np.cos(sol.y[2][0]))
-print(sol.y[1][0] * np.sin(sol.y[2][0]))
-print(np.sin(sol.y[2][0]))
-print()
+#Now solve Schwarzschild eqs and compare
 
-print(amin)
+J = PHi * ri**2
+k = (Ri**2 + (1 - 2 * M / ri) * J**2 / ri**2)**0.5 * -1
+
+#Need to find min r using J and M
+
+rmins = Cubic([1, 0, -1 * J**2, 2 * M * J**2])
+for i in range(len(rmins.answers)):
+    rmins.answers[i] = rmins.answers[i].real
+rmin = np.max(rmins.answers)
+
+changex = 0
+
+def t_dot_S(r):
+    #r = abs(r)
+    t_dot = k / (1 - 2 * M / r)
+    return(t_dot)
+
+def r_dot_S(r,phi):
+    #r = abs(r)
+    x = r * np.cos(phi)
+    r_dot2 = k**2 - (1 - 2 * M / r) * J**2 / r**2
+    if r_dot2 < 0:
+        print("r_dot^2 < 0!!!!")
+        print(r, x)
+    if x < changex:
+        r_dot = r_dot2**0.5
+    else:
+        r_dot = r_dot2**0.5 * -1
+    return(r_dot)
+
+def phi_dot_S(r,phi):
+    phi_dot = J / r**2
+    x = r * np.cos(phi)
+    if x < changex:
+        phi_dot = phi_dot * -1
+    return(phi_dot)
+
+#Now define a function that contains them all
+
+def overall_S(sigma,y):
+    print(sigma, y)
+    t,r,phi = y
+    y_dot = [t_dot_S(r), r_dot_S(r,phi), phi_dot_S(r,phi)]
+    return(y_dot)
+
+
+#Initial conditions
+
+y0_S = [0, ri, phii]
+
+#Integration
+
+sigma = np.arange(1000000) * 0.002
+sol_S = solve_ivp(overall_S, [0,np.max(sigma)], y0_S, method="LSODA", min_step=0, t_eval=sigma)
+
+#Plot xy comparison
+
+x_S = sol_S.y[1] * np.cos(sol_S.y[2])
+y_S = sol_S.y[1] * np.sin(sol_S.y[2])
+
+plt.plot(x,y)
+plt.plot(x_S, y_S, linestyle="--")
+plt.scatter(0,0, marker="x")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend(["Novikov", "Schwarzschild", "M"])
+plt.xlim(-1000,1000)
+plt.ylim(-500,200)
+plt.show()
+
+plt.plot(x,y)
+plt.plot(xphys, yphys, linestyle=":")
+plt.plot(x_S, y_S, linestyle="--")
+plt.scatter(0,0, marker="x")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.legend(["Novikov", "Scaled", "Schwarzschild", "M"])
+#plt.xlim(-150,150)
+#plt.ylim(-150,150)
+plt.show()
+
+plt.plot(sol_S.y[0],sol_S.y[1])
+plt.xlabel("t")
+plt.ylabel("r")
+plt.show()
+
+print(J,k,J/k)
 print(PHi)
+
+impact_re = (ri**4 * PHi**2 / (Ri**2 + (1 - 2 * M / ri) * PHi**2))**0.5
+print(impact_re)
+
+print(rmins.answers)
+print(rmin)
+
+print(y0)

@@ -191,3 +191,18 @@ plt.xlabel("y")
 plt.ylabel("z")
 plt.legend(["Physical", "Comoving", "$r_0$"])
 plt.show()
+
+plt.plot(xc,zc)
+plt.xlabel("x")
+plt.ylabel("z")
+plt.title("No Mass")
+plt.savefig("xz_noM.png", dpi=400)
+plt.show()
+
+#Poster plot
+plt.plot(xc,zc)
+plt.xlabel("x")
+plt.ylabel("y")
+#plt.title("No Mass")
+plt.savefig("Poster_FRW.png", dpi=400)
+plt.show()

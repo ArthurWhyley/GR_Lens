@@ -24,8 +24,8 @@ def dadt(t):
 
 #Define a mass distribution
 
-M0 = 1   #Mass at r=0
-sigma = 0.1
+M0 = 1e4   #Mass at r=0
+sigma = 0.0001
 width = 2 * sigma**2
 M_centre = 0
 rstep = 0.0001
@@ -304,4 +304,5 @@ plt.xlabel("t")
 plt.ylabel("r")
 plt.legend(["With M", "Without M"])
 plt.title("M centred on r = " + str(M_centre))
+plt.savefig("rt_withM.png", dpi=400)
 plt.show()
