@@ -6,7 +6,7 @@ from scipy.integrate import solve_ivp
 
 H0 = 1
 c = 1 #km/s
-OM = 0.3
+OM = 0
 OLambda = 0.7
 M0 = 0
 Lambda = 0
@@ -42,7 +42,8 @@ def d2Edr2(r):
 #Derivatives of R (and f functions to simplify)
 
 def Rcommat(r,R):
-    Rcommat = 0
+    Rcommat2 = 2 * M(r) / R - Lambda / 3 * R**2 + E(r)
+    Rcommat = Rcommat2**0.5
     return(Rcommat)
 
 def Rcommar(r,R):

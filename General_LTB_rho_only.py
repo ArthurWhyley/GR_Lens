@@ -6,16 +6,12 @@ from scipy.integrate import solve_ivp
 
 H0 = 1
 c = 1 #km/s
-OM = 0
-OLambda = 0.7
-M0 = 1e5
-Lambda = 0.7
+OM = 1
+OLambda = 0
+M0 = 0
+Lambda = 0
 rho0 = 1e-6 #unfidorm density of universe (arbitrary)
 kappa = 1
-
-#Create list to check r vs R at each iteration of the Rcommat function
-R_minus_r = []
-Rct2_list = []
 
 #Define rho(R,r)
 
@@ -26,29 +22,32 @@ def rho(r,R):
 #Define M(r)
 
 def M(r):
-    M = M0 / r**4
+    M = 4 / 3 * rho0 * np.pi * r**3
     return(M)
 
 def dMdr(r):
-    dMdr = -2 * M0 / r**5
+    dMdr = 4 * rho0 * np.pi * r**2
     return(dMdr)
 
 def d2Mdr2(r):
-    d2Mdr2 = 6 * M0 / r**6
+    d2Mdr2 = 8 * rho0 * np.pi * r
     return(d2Mdr2)
 
 #Define E(r)
 
 def E(r):
-    E = -2 * M(r) / r + Lambda / 3 * r**2
+    E = -2 * M(r) / r 
+    #E = 0
     return(E)
 
 def dEdr(r):
-    dEdr = 2 * M(r) / r**2 - 2 * dMdr(r) / r + Lambda * 2/3 * r
+    dEdr = 2 * M(r) / r**2 - 2 * dMdr(r) / r
+    #dEdr = 0
     return(dEdr)
 
 def d2Edr2(r):
-    d2Edr2 = -4 * M(r) / r**3 + 4 * dMdr(r) / r**2 - 2 * d2Mdr2(r) / r + Lambda * 2/3
+    d2Edr2 = -4 * M(r) / r**3 + 4 * dMdr(r) / r**2 - 2 * d2Mdr2(r) / r
+    #d2Edr2 = 0
     return(d2Edr2)
 
 #Derivatives of R (and f functions to simplify)
@@ -57,8 +56,6 @@ def d2Edr2(r):
 def Rcommat(r,R):
     Rcommat2 = 2 * M(r) / R - Lambda / 3 * R**2 + E(r)
     Rcommat = Rcommat2**0.5 * 1    #to test how things change
-    R_minus_r.append(R - r)
-    Rct2_list.append(Rcommat2)
     return(Rcommat)
 
 def drhodt(r,R):
@@ -155,10 +152,9 @@ def overall(sigma,y):
     #print(null_condition, yd)
     return(y_dot)
 
-ti = -100
 ri = 100
 rdi = -1
-Ri = ri * 0.9
+Ri = ri
 phii = 1
 
 AQuad = 1 - np.tan(phii)**2 * Rcommar(ri,Ri)**2
@@ -172,12 +168,12 @@ CQuad = -1 * Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 - np.tan(phii)**2 * Rcomma
 
 #Different ydot = 0 method using comoving y
 #phidi = 1
-phidi =  1 * rdi * np.sin(phii) / (ri * np.cos(phii))
-#tdi = 1 * (Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 + Ri**2 * rdi**2 / ri**2 * np.tan(phii)**2)**0.5
+phidi =  -1 * rdi * np.sin(phii) / (ri * np.cos(phii))
+#tdi = -1 * (Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 + Ri**2 * rdi**2 / ri**2 * np.tan(phii)**2)**0.5
 
 tdi = -1 * (Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 + Ri**2 * phidi**2)**0.5
 
-y0 = [ti, tdi, ri, rdi, phii, phidi, Ri]
+y0 = [0, tdi, ri, rdi, phii, phidi, Ri]
 #     t------r----------phi----------R
 print(y0)
 
@@ -302,39 +298,27 @@ phi_test = phidi * sol.t + phii
 x_test = r_test * np.cos(phi_test)
 y_test = r_test * np.sin(phi_test)
 
-#plt.plot(sol.t,sol.y[2])
-#plt.plot(sol.t,r_test)
-#plt.xlabel("$\sigma$")
-#plt.ylabel("r")
-#plt.show()
+plt.plot(sol.t,sol.y[2])
+plt.plot(sol.t,r_test)
+plt.xlabel("$\sigma$")
+plt.ylabel("r")
+plt.show()
 
-#plt.plot(sol.t,sol.y[4])
-#plt.plot(sol.t,phi_test)
-#plt.xlabel("$\sigma$")
-#plt.ylabel("$\phi$")
-#plt.show()
+plt.plot(sol.t,sol.y[4])
+plt.plot(sol.t,phi_test)
+plt.xlabel("$\sigma$")
+plt.ylabel("$\phi$")
+plt.show()
 
 #plt.plot(x,y)
-#plt.scatter(0,0, marker="x")
-#plt.scatter(xin,yin)
-#plt.plot(x_test,y_test)
-#plt.xlabel("x")
-#plt.ylabel("y")
-#plt.title("Comoving")
-#plt.show()
+plt.scatter(0,0, marker="x")
+plt.scatter(xin,yin)
+plt.plot(x_test,y_test)
+plt.xlabel("x")
+plt.ylabel("y")
+plt.title("Comoving")
+plt.show()
 
 print("Is phid_dot 0 at sig = 0 (when M = 0)?")
 phid_dot_test = -2 * Rcommar(ri,Ri) / Ri * rdi * phidi
 print(phid_dot_test)
-
-#Plot the R minus r results
-plt.scatter(np.arange(len(R_minus_r)), R_minus_r)
-plt.plot(np.arange(len(R_minus_r)), np.zeros(len(R_minus_r)))
-plt.ylabel("R - r")
-plt.show()
-
-#Plot R,t^2
-plt.scatter(np.arange(len(Rct2_list)), Rct2_list)
-plt.plot(np.arange(len(Rct2_list)), np.zeros(len(Rct2_list)))
-plt.ylabel("R,t^2")
-plt.show()
