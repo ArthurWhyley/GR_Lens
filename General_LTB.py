@@ -1,6 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from scipy.integrate import solve_ivp
+from explicit_methods_test import solver
 
 #Constants
 
@@ -8,14 +9,18 @@ H0 = 1
 c = 1 #km/s
 OM = 0
 OLambda = 0.7
-M0 = 1e5
-Lambda = 0.7
-rho0 = 1e-6 #unfidorm density of universe (arbitrary)
+M0 = 0
+Lambda = -0.7
+rho0 = 1e-2 #unfidorm density of universe (arbitrary)
 kappa = 1
 
 #Create list to check r vs R at each iteration of the Rcommat function
+
 R_minus_r = []
 Rct2_list = []
+Rcr_list = []   #Same thing but checking Rcommar
+Rcrt_list = []
+Rcrr_list = []
 
 #Define rho(R,r)
 
@@ -26,15 +31,15 @@ def rho(r,R):
 #Define M(r)
 
 def M(r):
-    M = M0 / r**4
+    M = M0 / r**2
     return(M)
 
 def dMdr(r):
-    dMdr = -2 * M0 / r**5
+    dMdr = -2 * M0 / r**3
     return(dMdr)
 
 def d2Mdr2(r):
-    d2Mdr2 = 6 * M0 / r**6
+    d2Mdr2 = 6 * M0 / r**4
     return(d2Mdr2)
 
 #Define E(r)
@@ -56,6 +61,9 @@ def d2Edr2(r):
 
 def Rcommat(r,R):
     Rcommat2 = 2 * M(r) / R - Lambda / 3 * R**2 + E(r)
+    #if type(Rcommat2) == np.float64:
+     #   if Rcommat2 < 0:
+      #      Rcommat2 = Rcommat2 * -1
     Rcommat = Rcommat2**0.5 * 1    #to test how things change
     R_minus_r.append(R - r)
     Rct2_list.append(Rcommat2)
@@ -72,10 +80,12 @@ def f(r,R):
 
 def Rcommar(r,R):
     Rcommar = -1 * dEdr(r) * R / f(r,R)
+    Rcr_list.append(Rcommar)
     return(Rcommar)
 
 def Rcommart(r,R):
     Rcommart = -1 * Rcommar(r,R) * (drhodt(r,R) / rho(r,R) + 2 * Rcommat(r,R) / R)
+    Rcrt_list.append(Rcommart)
     return(Rcommart)
 
 def drhodr(r,R):
@@ -100,6 +110,7 @@ def dfdr(r,R):
 def Rcommarr(r,R):
     Rcommarr = (-1 * d2Edr2(r) * R / f(r,R) - dEdr(r) * Rcommar(r,R) / f(r,R)
                 + dEdr(r) * R * dfdr(r,R) / f(r,R)**2)
+    Rcrr_list.append(Rcommarr)
     return(Rcommarr)
 
 #Differential equations to solve
@@ -143,6 +154,7 @@ def overall(sigma,y):
     t,td,r,rd,phi,phid,R = y
     y_dot = [t_dot(td), td_dot(r,rd,phid,R), r_dot(rd), rd_dot(td,r,rd,phid,R),
              phi_dot(phid), phid_dot(td,r,rd,phid,R), R_dot(td,r,rd,R)]
+    y_dot = np.array(y_dot)
     #plt.scatter(R*np.cos(phi), R*np.sin(phi))
     #plt.scatter(r*np.cos(phi), r*np.sin(phi))
     #plt.scatter(R,t)
@@ -155,10 +167,10 @@ def overall(sigma,y):
     #print(null_condition, yd)
     return(y_dot)
 
-ti = -100
+ti = 0
 ri = 100
 rdi = -1
-Ri = ri * 0.9
+Ri = ri * 1
 phii = 1
 
 AQuad = 1 - np.tan(phii)**2 * Rcommar(ri,Ri)**2
@@ -171,11 +183,9 @@ CQuad = -1 * Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 - np.tan(phii)**2 * Rcomma
 #phidi = -1 * (Rcommar(ri,Ri) * tdi + Rcommat(ri,Ri) * rdi) * np.sin(phii) / (Ri * np.cos(phii))
 
 #Different ydot = 0 method using comoving y
-#phidi = 1
-phidi =  1 * rdi * np.sin(phii) / (ri * np.cos(phii))
-#tdi = 1 * (Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 + Ri**2 * rdi**2 / ri**2 * np.tan(phii)**2)**0.5
-
-tdi = -1 * (Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 + Ri**2 * phidi**2)**0.5
+tdi = -1 * (Rcommar(ri,Ri)**2 / (1 + E(ri)) * rdi**2 + Ri**2 * rdi**2 / ri**2 * np.tan(phii)**2)**0.5
+Rdi = Ri * rdi / ri + Rcommat(ri,Ri) * tdi
+phidi =  -1 * Rdi * np.sin(phii) / (Ri * np.cos(phii))
 
 y0 = [ti, tdi, ri, rdi, phii, phidi, Ri]
 #     t------r----------phi----------R
@@ -185,8 +195,8 @@ ydoti = (Rcommar(ri,Ri) * tdi + Rcommat(ri,Ri) * rdi) * np.sin(phii) + Ri * np.c
 
 #Now do the integration
 
-sigma = np.arange(10000) * 1.5e-1
-sol = solve_ivp(overall, [0,np.max(sigma)], y0, method="LSODA", min_step=0, t_eval=None)
+sigma = np.arange(10000) * 1.5e-4
+sol = solve_ivp(overall, [0,np.max(sigma)], y0, method="LSODA", t_eval=None)
 
 print(np.shape(sol.y))
 print(np.shape(sol.t))
@@ -195,39 +205,43 @@ if sol.status == -1: print("INTEGRATION FAILED")
 #Plot variables against sigma
 
 plt.plot(sol.t,sol.y[0])
+plt.scatter(sol.t,sol.y[0], marker="x")
 plt.xlabel("$\sigma$")
 plt.ylabel("t")
 plt.show()
 
 plt.plot(sol.t,sol.y[2])
+plt.scatter(sol.t,sol.y[2], marker="x")
 plt.xlabel("$\sigma$")
 plt.ylabel("r")
 plt.show()
 
 plt.plot(sol.t,sol.y[3])
+plt.scatter(sol.t,sol.y[3], marker="x")
 plt.xlabel("$\sigma$")
 plt.ylabel("r dot")
 plt.show()
 
 plt.plot(sol.t,sol.y[4])
+plt.scatter(sol.t,sol.y[4], marker="x")
 plt.xlabel("$\sigma$")
 plt.ylabel("$\phi$")
 plt.show()
 
 plt.plot(sol.t,sol.y[5])
+plt.scatter(sol.t,sol.y[5], marker="x")
 plt.xlabel("$\sigma$")
 plt.ylabel("$\phi$ dot")
 plt.show()
 
 plt.plot(sol.t,sol.y[6])
+plt.scatter(sol.t,sol.y[6], marker="x")
 plt.xlabel("$\sigma$")
 plt.ylabel("R")
 plt.show()
 
 #Check y dot
 
-#ydot = ((Rcommar(sol.y[2],sol.y[6]) * sol.y[1] + Rcommat(sol.y[2],sol.y[6]) * sol.y[3]) * np.sin(sol.y[4]) +
-        #sol.y[6] * np.cos(sol.y[4]) * sol.y[5])
 ydot = sol.y[3] * np.sin(sol.y[4]) + sol.y[2] * np.cos(sol.y[4]) * sol.y[5]
 plt.plot(sol.t,ydot)
 plt.xlabel("$\sigma$")
@@ -256,13 +270,14 @@ xin = sol.y[6][0] * np.cos(sol.y[4][0])
 yin = sol.y[6][0] * np.sin(sol.y[4][0])
 
 plt.plot(x,y)
+#plt.scatter(x,y, marker="x")
 plt.scatter(0,0, marker="x")
 plt.scatter(xin,yin)
 plt.xlabel("x")
 plt.ylabel("y")
 plt.title("Physical")
-#plt.xlim([54.02,54.04])
-#plt.ylim([84.12,84.16])
+#plt.xlim([47,49])
+#plt.ylim([70,80])
 plt.savefig("NoM_Problem.jpeg", dpi=200)
 plt.show()
 
@@ -337,4 +352,135 @@ plt.show()
 plt.scatter(np.arange(len(Rct2_list)), Rct2_list)
 plt.plot(np.arange(len(Rct2_list)), np.zeros(len(Rct2_list)))
 plt.ylabel("R,t^2")
+plt.show()
+
+#Plot R,r
+plt.scatter(np.arange(len(Rcr_list)), Rcr_list)
+plt.plot(np.arange(len(Rcr_list)), np.zeros(len(Rcr_list)))
+plt.ylabel("R,r")
+plt.show()
+
+#Plot R,rt
+plt.scatter(np.arange(len(Rcrt_list)), Rcrt_list)
+plt.plot(np.arange(len(Rcrt_list)), np.zeros(len(Rcrt_list)))
+plt.ylabel("R,rt")
+plt.show()
+
+#Plot R,rr
+plt.scatter(np.arange(len(Rcrr_list)), Rcrr_list)
+plt.plot(np.arange(len(Rcrr_list)), np.zeros(len(Rcrr_list)))
+plt.ylabel("R,rr")
+plt.show()
+
+print(min(R_minus_r))
+
+#Plot to compare how mass affects angle
+
+#M_cons_r = np.arange(10, ri+1, 10)
+#M_cons_M = M(M_cons_r)
+#print(M_cons_r)
+#print(M_cons_M)
+#plt.plot(sol.y[2],sol.y[4])
+#plt.plot(M_cons_r, M_cons_M)
+#plt.legend(["$\phi$","M"])
+#plt.xlabel("r")
+#plt.yscale("log")
+#plt.show()
+
+#Plot to test variation of phi_dot across sigma when calculated separately
+
+R_dot_test = sol.y[6] * sol.y[3] / sol.y[2] + Rcommat(sol.y[2],sol.y[6]) * sol.y[1]
+phi_dot_test = np.zeros(len(sol.t))
+for i in range(len(sol.t)):
+    phi_dot_test[i] = (-1 * R_dot_test[i] * np.sin(sol.y[4][i])       
+                       / sol.y[6][i] / np.cos(sol.y[4][i]))
+plt.plot(sol.t,sol.y[5])
+plt.plot(sol.t,phi_dot_test)
+plt.xlabel("$\sigma$")
+plt.ylabel("$\phi$ dot")
+plt.legend(["From integration", "Calculated using initial formula"])
+plt.show()
+
+#Relation with phi
+
+plt.plot(sol.y[4],sol.y[5])
+plt.plot(sol.y[4],phi_dot_test)
+plt.scatter(sol.y[4],sol.y[5])
+plt.scatter(sol.y[4],phi_dot_test)
+plt.xlabel("$\phi$")
+plt.ylabel("$\phi$ dot")
+plt.legend(["From integration", "Calculated using initial formula"])
+#plt.yscale("log")
+#plt.ylim([0,2])
+plt.show()
+
+#Calculate approx phi given values of phi_dot_test
+
+phi_approx = np.zeros(len(sol.t))
+phi_approx[0] = phii
+for i  in range(len(sol.t)-1):
+    phi_approx[i+1] = phi_approx[i] + phi_dot_test[i] * (sol.t[i+1] - sol.t[i])
+
+plt.plot(sol.t,sol.y[4])
+plt.plot(sol.t,phi_approx)
+plt.scatter(sol.t,sol.y[4])
+plt.scatter(sol.t,phi_approx)
+plt.xlabel("$\sigma$")
+plt.ylabel("$\phi$")
+plt.show()
+
+#Test first step(s) using the explicit solver function 
+
+print("")
+print("Testing explicit method")
+test = solver(overall, sigma[0:100], y0)
+
+#Plot variables against sigma
+
+plt.plot(sol.t,sol.y[0])
+plt.scatter(sol.t,sol.y[0], marker="x")
+plt.plot(test.t,test.y[0])
+plt.scatter(test.t,test.y[0], marker="x")
+plt.xlabel("$\sigma$")
+plt.ylabel("t")
+plt.show()
+
+plt.plot(sol.t,sol.y[2])
+plt.scatter(sol.t,sol.y[2], marker="x")
+plt.plot(test.t,test.y[2])
+plt.scatter(test.t,test.y[2], marker="x")
+plt.xlabel("$\sigma$")
+plt.ylabel("r")
+plt.show()
+
+plt.plot(sol.t,sol.y[3])
+plt.scatter(sol.t,sol.y[3], marker="x")
+plt.plot(test.t,test.y[3])
+plt.scatter(test.t,test.y[3], marker="x")
+plt.xlabel("$\sigma$")
+plt.ylabel("r dot")
+plt.show()
+
+plt.plot(sol.t,sol.y[4])
+plt.scatter(sol.t,sol.y[4], marker="x")
+plt.plot(test.t,test.y[4])
+plt.scatter(test.t,test.y[4], marker="x")
+plt.xlabel("$\sigma$")
+plt.ylabel("$\phi$")
+plt.show()
+
+plt.plot(sol.t,sol.y[5])
+plt.scatter(sol.t,sol.y[5], marker="x")
+plt.plot(test.t,test.y[5])
+plt.scatter(test.t,test.y[5], marker="x")
+plt.xlabel("$\sigma$")
+plt.ylabel("$\phi$ dot")
+plt.show()
+
+plt.plot(sol.t,sol.y[6])
+plt.scatter(sol.t,sol.y[6], marker="x")
+plt.plot(test.t,test.y[6])
+plt.scatter(test.t,test.y[6], marker="x")
+plt.xlabel("$\sigma$")
+plt.ylabel("R")
 plt.show()
